@@ -1,0 +1,15 @@
+# Python dependencies
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# PyInstaller build outputs
+build/
+dist/
+
+# Logs and temp calculations
+*.log
+last_sweep_req.json
+*.pdf

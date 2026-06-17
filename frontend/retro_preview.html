@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LBsim.exe</title>
+    <!-- We use 98.css to match the exact aesthetic the user sketched -->
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            font-family: Calibri, 'Segoe UI', Tahoma, sans-serif !important;
+        }
+
+        body {
+            background-color: #c0c0c0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            /* Avoid scrollbars on the desktop itself */
+            font-size: 16px;
+            /* INCREASED BASE FONT AGAIN */
+        }
+
+        /* Adjust inputs and buttons, but leave selects alone mostly to avoid arrow overlap */
+        input[type="text"],
+        button {
+            font-size: 16px;
+            padding: 4px;
+            box-sizing: border-box;
+            height: 32px;
+        }
+
+        select {
+            font-size: 16px;
+        }
+
+        .window {
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .title-bar {
+            font-size: 18px;
+            /* Larger title */
+            padding: 6px;
+        }
+
+        .title-bar-controls button {
+            width: 24px;
+            height: 24px;
+        }
+
+        .title-bar.window-drag-region {
+            -webkit-app-region: drag;
+            cursor: move;
+        }
+
+        .title-bar.window-drag-region * {
+            -webkit-app-region: no-drag;
+        }
+
+        .title-bar.window-drag-region .title-bar-text {
+            -webkit-app-region: drag;
+        }
+
+        .window-body {
+            flex-grow: 1;
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 24px;
+            overflow: auto;
+        }
+
+        /* Layout structure matching the sketch */
+        .left-pane {
+            flex: 2;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .right-pane {
+            flex: 1;
+            /* takes up roughly 1/3 of the width */
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            /* Increased gap */
+        }
+
+        /* The specific input blocks */
+        .input-block {
+            background-color: #c0c0c0;
+            /* Match standard 95 bg */
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* Increased gap */
+            padding: 16px;
+            /* Increased padding */
+        }
+
+        .input-block legend {
+            font-weight: bold;
+            font-size: 18px;
+            /* Larger legend */
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-row input[type="text"] {
+            flex-grow: 1;
+            width: 100%;
+            /* Take full width of container */
+        }
+
+        .sweep-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-step-row {
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Specific blocks in right pane matching sketch */
+        .iteration-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 16px;
+            font-size: 18px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .result-box {
+            text-align: center;
+            padding: 24px;
+            /* Increased padding */
+        }
+
+        .result-box legend {
+            font-size: 18px;
+        }
+
+        .result-box .value {
+            font-size: 32px;
+            /* Much larger value */
+            margin: 16px 0;
+            font-weight: bold;
+        }
+
+        .loss-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-size: 15px;
+            /* Slightly larger text */
+            text-align: center;
+        }
+
+        .loss-box {
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .plot-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            /* Increased gap */
+            padding: 16px;
+        }
+
+        .plot-section legend {
+            font-size: 18px;
+        }
+
+        .axis-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-top: auto;
+            /* Push to bottom of right pane */
+            gap: 24px;
+        }
+
+        .btn-run {
+            flex: 1;
+            font-size: 32px;
+            /* Larger RUN button text */
+            color: #008000;
+            /* Green Run text */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 24px;
+        }
+
+        .btn-run::after {
+            content: '▶';
+            /* Simple play symbol */
+            font-size: 28px;
+        }
+
+        .side-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 160px;
+            /* Wider buttons */
+        }
+
+        .side-actions button {
+            flex: 1;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="window">
+        <div class="title-bar window-drag-region">
+            <div class="title-bar-text">LBsim.exe</div>
+            <div class="title-bar-controls">
+                <button aria-label="Minimize" id="btnWinMinimize"></button>
+                <button aria-label="Maximize" id="btnWinMaximize"></button>
+                <button aria-label="Close" id="btnWinClose"></button>
+            </div>
+        </div>
+
+        <div style="padding: 2px 4px; display: flex; gap: 8px; border-bottom: 2px groove #ffffff;">
+            <button style="min-width: 60px;" id="btnReset">Reset</button>
+            <button style="min-width: 60px;">About</button>
+            <button style="min-width: 80px;" id="btnDemoData">Demo Data</button>
+        </div>
+
+        <div class="window-body">
+
+            <!-- LEFT PANE: 3x3 Grid of Inputs -->
+            <div class="left-pane">
+
+                <!-- Cell 1: Tx Power matching sketch exactly -->
+                <fieldset class="input-block">
+                    <legend>Tx power <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="txPower" placeholder="enter value">
+                        <select id="txPowerUnit">
+                            <option>mW</option>
+                            <option>dBm</option>
+                            <option>W</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_1" name="sweep_tx">
+                            <label for="sweep_yes_1">Yes</label>
+                            <input type="radio" id="sweep_no_1" name="sweep_tx" checked>
+                            <label for="sweep_no_1">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_tx_range" placeholder="range (1-10)" style="width: 60%;">
+                        <input type="text" id="sw_tx_step" placeholder="step" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 2: Wavelength -->
+                <fieldset class="input-block">
+                    <legend>Wavelength <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="wavelength" placeholder="1550">
+                        <select id="wavelengthUnit">
+                            <option>nm</option>
+                            <option>µm</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_2" name="sweep_wave">
+                            <label for="sweep_yes_2">Yes</label>
+                            <input type="radio" id="sweep_no_2" name="sweep_wave" checked>
+                            <label for="sweep_no_2">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_wave_range" placeholder="range" style="width: 60%;">
+                        <input type="text" id="sw_wave_step" placeholder="step" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 3: Distance -->
+                <fieldset class="input-block">
+                    <legend>Distance <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="distance" placeholder="1000">
+                        <select id="distanceUnit" style="width: 75px;">
+                            <option>m</option>
+                            <option>km</option>
+                            <option>miles</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_3" name="sweep_dist" checked>
+                            <label for="sweep_yes_3">Yes</label>
+                            <input type="radio" id="sweep_no_3" name="sweep_dist">
+                            <label for="sweep_no_3">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_dist_range" placeholder="100 - 5000" style="width: 60%;">
+                        <input type="text" id="sw_dist_step" placeholder="100" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 4: Tx Diameter -->
+                <fieldset class="input-block">
+                    <legend>Tx Diameter <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="txDiameter" placeholder="0.1">
+                        <select id="txDiameterUnit" style="width: 75px;">
+                            <option>m</option>
+                            <option>cm</option>
+                            <option>mm</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_4" name="sweep_txd">
+                            <label for="sweep_yes_4">Yes</label>
+                            <input type="radio" id="sweep_no_4" name="sweep_txd" checked>
+                            <label for="sweep_no_4">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_txd_range" placeholder="range" style="width: 60%;">
+                        <input type="text" id="sw_txd_step" placeholder="step" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 5: Rx Diameter -->
+                <fieldset class="input-block">
+                    <legend>Rx Diameter <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="rxDiameter" placeholder="0.2">
+                        <select id="rxDiameterUnit" style="width: 75px;">
+                            <option>m</option>
+                            <option>cm</option>
+                            <option>mm</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_5" name="sweep_rxd">
+                            <label for="sweep_yes_5">Yes</label>
+                            <input type="radio" id="sweep_no_5" name="sweep_rxd" checked>
+                            <label for="sweep_no_5">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_rxd_range" placeholder="range" style="width: 60%;">
+                        <input type="text" id="sw_rxd_step" placeholder="step" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 6: Efficiencies -->
+                <fieldset class="input-block">
+                    <legend>Efficiencies <span style="color: red;">*</span></legend>
+                    <div style="margin-bottom: 8px;">
+                        <div class="input-row">
+                            <label style="width: 50px;">Tx η:</label>
+                            <input type="text" id="txEfficiency" placeholder="1.0">
+                            <select id="txEfficiencyUnit" style="width: 75px;">
+                                <option>dec</option>
+                                <option>%</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_tx_eff_y" name="sw_tx_eff">
+                                <label for="sw_tx_eff_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_tx_eff_n" name="sw_tx_eff" checked>
+                                <label for="sw_tx_eff_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_tx_eff_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_tx_eff_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="input-row">
+                            <label style="width: 50px;">Rx η:</label>
+                            <input type="text" id="rxEfficiency" placeholder="1.0">
+                            <select id="rxEfficiencyUnit" style="width: 75px;">
+                                <option>dec</option>
+                                <option>%</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_rx_eff_y" name="sw_rx_eff">
+                                <label for="sw_rx_eff_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_rx_eff_n" name="sw_rx_eff" checked>
+                                <label for="sw_rx_eff_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_rx_eff_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_rx_eff_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Cell 7: Required Margin / Sens -->
+                <fieldset class="input-block">
+                    <legend>Rx Sensitivity <span style="color: red;">*</span></legend>
+                    <div class="input-row">
+                        <input type="text" id="rxSensitivity" placeholder="-40">
+                        <select id="rxSensitivityUnit">
+                            <option>dBm</option>
+                            <option>mW</option>
+                        </select>
+                    </div>
+                    <div class="sweep-row">
+                        <label>Sweep</label>
+                        <div class="field-row">
+                            <input type="radio" id="sweep_yes_7" name="sweep_sens">
+                            <label for="sweep_yes_7">Yes</label>
+                            <input type="radio" id="sweep_no_7" name="sweep_sens" checked>
+                            <label for="sweep_no_7">No</label>
+                        </div>
+                    </div>
+                    <div class="range-step-row">
+                        <input type="text" id="sw_sens_range" placeholder="range" style="width: 60%;">
+                        <input type="text" id="sw_sens_step" placeholder="step" style="width: 35%;">
+                    </div>
+                </fieldset>
+
+                <!-- Cell 8: Losses -->
+                <fieldset class="input-block">
+                    <legend>Additional Losses</legend>
+                    <div style="margin-bottom: 8px;">
+                        <div class="input-row">
+                            <label style="width: 90px; font-size: 14px;">System Loss:</label>
+                            <input type="text" id="sysLoss" placeholder="0">
+                            <select id="sysLossUnit" style="width: 75px;">
+                                <option>dB</option>
+                                <option>linear</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_sys_loss_y" name="sw_sys_loss">
+                                <label for="sw_sys_loss_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_sys_loss_n" name="sw_sys_loss" checked>
+                                <label for="sw_sys_loss_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_sys_loss_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_sys_loss_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="input-row">
+                            <label style="width: 90px; font-size: 14px;">Coupling:</label>
+                            <input type="text" id="cplLoss" placeholder="0">
+                            <select id="cplLossUnit" style="width: 75px;">
+                                <option>dB</option>
+                                <option>linear</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_cpl_loss_y" name="sw_cpl_loss">
+                                <label for="sw_cpl_loss_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_cpl_loss_n" name="sw_cpl_loss" checked>
+                                <label for="sw_cpl_loss_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_cpl_loss_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_cpl_loss_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Cell 9: Pointing -->
+                <fieldset class="input-block">
+                    <legend>Pointing</legend>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px; font-size: 14px;">
+                        <input type="radio" id="pt_err" name="pt_mode" checked onchange="togglePointingUnits()">
+                        <label for="pt_err">Errors</label>
+                        <input type="radio" id="pt_loss" name="pt_mode" onchange="togglePointingUnits()">
+                        <label for="pt_loss">Losses</label>
+                    </div>
+
+                    <div style="margin-bottom: 8px;">
+                        <div class="input-row">
+                            <label style="width: 40px;">Tx:</label>
+                            <input type="text" id="txPointing" placeholder="0">
+                            <select id="tx_pt_unit" style="width: 75px;">
+                                <option>rad</option>
+                                <option>urad</option>
+                                <option>deg</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_tx_pt_y" name="sw_tx_pt">
+                                <label for="sw_tx_pt_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_tx_pt_n" name="sw_tx_pt" checked>
+                                <label for="sw_tx_pt_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_tx_pt_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_tx_pt_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="input-row">
+                            <label style="width: 40px;">Rx:</label>
+                            <input type="text" id="rxPointing" placeholder="0">
+                            <select id="rx_pt_unit" style="width: 75px;">
+                                <option>rad</option>
+                                <option>urad</option>
+                                <option>deg</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_rx_pt_y" name="sw_rx_pt">
+                                <label for="sw_rx_pt_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_rx_pt_n" name="sw_rx_pt" checked>
+                                <label for="sw_rx_pt_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_rx_pt_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_rx_pt_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Cell 10: LNA Gain -->
+                <fieldset class="input-block">
+                    <legend>Rx LNA Gain</legend>
+                    <div style="margin-bottom: 8px;">
+                        <div class="input-row">
+                            <input type="text" id="rxLnaGain" placeholder="0">
+                            <select id="rxLnaGainUnit" style="width: 75px;">
+                                <option>dB</option>
+                            </select>
+                        </div>
+                        <div class="sweep-row">
+                            <label style="font-size: 13px;">Sweep</label>
+                            <div class="field-row">
+                                <input type="radio" id="sw_lna_y" name="sw_lna">
+                                <label for="sw_lna_y" style="font-size: 13px;">Yes</label>
+                                <input type="radio" id="sw_lna_n" name="sw_lna" checked>
+                                <label for="sw_lna_n" style="font-size: 13px;">No</label>
+                            </div>
+                        </div>
+                        <div class="range-step-row">
+                            <input type="text" id="sw_lna_range" placeholder="range" style="width: 60%;">
+                            <input type="text" id="sw_lna_step" placeholder="step" style="width: 35%;">
+                        </div>
+                    </div>
+                </fieldset>
+
+            </div>
+
+            <!-- RIGHT PANE: Results and Controls -->
+            <div class="right-pane">
+
+                <div class="iteration-row">
+                    <span id="iteration_sweep_info" style="font-size: 15px; color: #000080; margin-right: auto; font-weight: bold; padding-left: 4px;"></span>
+                    <span>Iteration No. -></span>
+                    <select id="iteration_dropdown">
+                        <option>1</option>
+                    </select>
+                </div>
+
+                <div class="results-grid">
+                    <fieldset class="result-box">
+                        <legend>Rx Power</legend>
+                        <div class="value" id="res_rx_power">XX.XX</div>
+                        <select id="res_rx_power_unit">
+                            <option>mW</option>
+                            <option>dBm</option>
+                        </select>
+                    </fieldset>
+
+                    <fieldset class="result-box">
+                        <legend>Link Margin</legend>
+                        <div class="value" id="res_link_margin">XX.X</div>
+                        <select id="res_link_margin_unit">
+                            <option>dB</option>
+                            <option>mW</option>
+                        </select>
+                    </fieldset>
+                </div>
+
+                <fieldset class="loss-grid">
+                    <div class="loss-box">
+                        <b>Tx Gain</b>
+                        <span id="res_tx_gain">XX.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Rx Gain</b>
+                        <span id="res_rx_gain">XX.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Tx η loss</b>
+                        <span id="res_tx_eff_loss">X.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Rx η loss</b>
+                        <span id="res_rx_eff_loss">X.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Path Loss</b>
+                        <span id="res_path_loss">XXX.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>CL + PL</b>
+                        <span id="res_other_loss">XX.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Tx PL loss</b>
+                        <span id="res_tx_pl_loss">XX.X dB</span>
+                    </div>
+                    <div class="loss-box">
+                        <b>Rx PL loss</b>
+                        <span id="res_rx_pl_loss">XX.X dB</span>
+                    </div>
+                </fieldset>
+
+                <fieldset class="plot-section">
+                    <legend>Generate Table & Plot</legend>
+ 
+                    <div class="axis-row" style="margin-bottom: 8px;">
+                        <label>X-axis -></label>
+                        <select style="width: 70%;" id="plot_x_axis" disabled>
+                            <option value="sweep_value" selected>Active Sweep Parameter</option>
+                        </select>
+                    </div>
+ 
+                    <div class="axis-row" style="margin-bottom: 8px;">
+                        <label>Y-axis (Left) -></label>
+                        <select style="width: 70%;" id="plot_y_axis">
+                            <optgroup label="Outputs">
+                                <option value="link_margin_db" selected>Link Margin (dB)</option>
+                                <option value="received_power_lna_dbm">Rx Power (dBm)</option>
+                                <option value="tx_gain_db">Tx Gain (dB)</option>
+                                <option value="rx_gain_db">Rx Gain (dB)</option>
+                                <option value="tx_pointing_loss_db">Tx Pointing Loss (dB)</option>
+                                <option value="rx_pointing_loss_db">Rx Pointing Loss (dB)</option>
+                                <option value="path_loss_db">Path Loss (dB)</option>
+                                <option value="total_loss_db">Total Loss (dB)</option>
+                            </optgroup>
+                            <optgroup label="Inputs">
+                                <option value="tx_power_dbm">Tx Power (dBm)</option>
+                                <option value="wavelength_nm">Wavelength (nm)</option>
+                                <option value="distance_m">Distance (m)</option>
+                                <option value="tx_diameter_m">Tx Diameter (m)</option>
+                                <option value="rx_diameter_m">Rx Diameter (m)</option>
+                                <option value="tx_efficiency_percent">Tx Efficiency (%)</option>
+                                <option value="rx_efficiency_percent">Rx Efficiency (%)</option>
+                                <option value="rx_sensitivity_dbm">Rx Sensitivity (dBm)</option>
+                                <option value="impl_loss_db">System Loss (dB)</option>
+                                <option value="coupling_loss_db">Coupling Loss (dB)</option>
+                                <option value="tx_pointing_error_rad">Tx Pointing Error (rad)</option>
+                                <option value="rx_pointing_error_rad">Rx Pointing Error (rad)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="axis-row" style="margin-bottom: 8px;">
+                        <label>Y-axis (Right) -></label>
+                        <select style="width: 70%;" id="plot_y_axis_right">
+                            <option value="none">None</option>
+                            <optgroup label="Outputs">
+                                <option value="link_margin_db">Link Margin (dB)</option>
+                                <option value="received_power_lna_dbm" selected>Rx Power (dBm)</option>
+                                <option value="tx_gain_db">Tx Gain (dB)</option>
+                                <option value="rx_gain_db">Rx Gain (dB)</option>
+                                <option value="tx_pointing_loss_db">Tx Pointing Loss (dB)</option>
+                                <option value="rx_pointing_loss_db">Rx Pointing Loss (dB)</option>
+                                <option value="path_loss_db">Path Loss (dB)</option>
+                                <option value="total_loss_db">Total Loss (dB)</option>
+                            </optgroup>
+                            <optgroup label="Inputs">
+                                <option value="tx_power_dbm">Tx Power (dBm)</option>
+                                <option value="wavelength_nm">Wavelength (nm)</option>
+                                <option value="distance_m">Distance (m)</option>
+                                <option value="tx_diameter_m">Tx Diameter (m)</option>
+                                <option value="rx_diameter_m">Rx Diameter (m)</option>
+                                <option value="tx_efficiency_percent">Tx Efficiency (%)</option>
+                                <option value="rx_efficiency_percent">Rx Efficiency (%)</option>
+                                <option value="rx_sensitivity_dbm">Rx Sensitivity (dBm)</option>
+                                <option value="impl_loss_db">System Loss (dB)</option>
+                                <option value="coupling_loss_db">Coupling Loss (dB)</option>
+                                <option value="tx_pointing_error_rad">Tx Pointing Error (rad)</option>
+                                <option value="rx_pointing_error_rad">Rx Pointing Error (rad)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; margin-top: 16px; justify-content: center;">
+                        <button id="btnPlotGraph" style="padding: 8px 24px; font-weight: bold; font-size: 16px;">Plot
+                            Graph</button>
+                        <button id="btnPlotTable" style="padding: 8px 24px; font-weight: bold; font-size: 16px;">Plot
+                            Table</button>
+                    </div>
+                </fieldset>
+
+                <div class="action-row">
+                    <button class="btn-run" id="btnRun">RUN</button>
+                    <div class="side-actions">
+                        <button id="btnExportPdf">Export PDF</button>
+                        <button id="btnExit">Exit</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function togglePointingUnits() {
+            const isLoss = document.getElementById('pt_loss').checked;
+            const txUnit = document.getElementById('tx_pt_unit');
+            const rxUnit = document.getElementById('rx_pt_unit');
+
+            const options = isLoss
+                ? '<option>dB</option><option>linear</option>'
+                : '<option>rad</option><option>urad</option><option>deg</option>';
+
+            txUnit.innerHTML = options;
+            rxUnit.innerHTML = options;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const allRadios = document.querySelectorAll('input[type="radio"][name^="sweep_"], input[type="radio"][name^="sw_"]');
+
+            function updateVisibility() {
+                const sweepRows = document.querySelectorAll('.sweep-row');
+                sweepRows.forEach(row => {
+                    const yesRadio = row.querySelector('input[type="radio"][id*="_yes_"], input[type="radio"][id*="_y"]');
+                    const rangeStepRow = row.nextElementSibling;
+                    const inputRow = row.previousElementSibling;
+
+                    let fixedInput = null;
+                    if (inputRow && inputRow.classList.contains('input-row')) {
+                        fixedInput = inputRow.querySelector('input[type="text"]');
+                    }
+
+                    if (yesRadio && yesRadio.checked) {
+                        if (rangeStepRow && rangeStepRow.classList.contains('range-step-row')) {
+                            rangeStepRow.style.display = 'flex';
+                        }
+                        if (fixedInput) {
+                            fixedInput.disabled = true;
+                            // Add a visual cue for being disabled beyond the default disabled styling if needed
+                        }
+                    } else {
+                        if (rangeStepRow && rangeStepRow.classList.contains('range-step-row')) {
+                            rangeStepRow.style.display = 'none';
+                        }
+                        if (fixedInput) {
+                            fixedInput.disabled = false;
+                        }
+                    }
+                });
+            }
+
+            allRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    // If a "Yes" radio is selected
+                    if (radio.checked && (radio.id.includes('_yes_') || radio.id.endsWith('_y'))) {
+                        const isPointing = radio.name === 'sw_tx_pt' || radio.name === 'sw_rx_pt';
+
+                        // Check all other "Yes" radios
+                        allRadios.forEach(otherRadio => {
+                            if (otherRadio.name !== radio.name && (otherRadio.id.includes('_yes_') || otherRadio.id.endsWith('_y'))) {
+                                const otherIsPointing = otherRadio.name === 'sw_tx_pt' || otherRadio.name === 'sw_rx_pt';
+
+                                // If both the clicked one and the current one are Pointing sweeps, allow it
+                                if (isPointing && otherIsPointing) {
+                                    return;
+                                }
+
+                                // Otherwise, uncheck this "Yes" and check its "No" counterpart
+                                otherRadio.checked = false;
+                                let noRadioId;
+                                if (otherRadio.id.includes('_yes_')) {
+                                    noRadioId = otherRadio.id.replace('_yes_', '_no_');
+                                } else if (otherRadio.id.endsWith('_y')) {
+                                    noRadioId = otherRadio.id.replace('_y', '_n');
+                                }
+                                const noRadio = document.getElementById(noRadioId);
+                                if (noRadio) noRadio.checked = true;
+                            }
+                        });
+                    }
+                    updateVisibility();
+                });
+            });
+
+            // Set initial visibility
+            updateVisibility();
+
+            // Logic to calculate and populate iterations
+            const iterationDropdown = document.getElementById('iteration_dropdown');
+
+            function calculateIterations() {
+                // Find active sweep
+                let activeRangeInput = null;
+                let activeStepInput = null;
+
+                const sweepRows = document.querySelectorAll('.sweep-row');
+                sweepRows.forEach(row => {
+                    const yesRadio = row.querySelector('input[type="radio"][id*="_yes_"], input[type="radio"][id*="_y"]');
+                    if (yesRadio && yesRadio.checked) {
+                        const rangeStepRow = row.nextElementSibling;
+                        if (rangeStepRow && rangeStepRow.classList.contains('range-step-row')) {
+                            const inputs = rangeStepRow.querySelectorAll('input[type="text"]');
+                            if (inputs.length >= 2) {
+                                activeRangeInput = inputs[0];
+                                activeStepInput = inputs[1];
+                            }
+                        }
+                    }
+                });
+
+                iterationDropdown.innerHTML = '';
+
+                if (activeRangeInput && activeStepInput) {
+                    const stepStr = activeStepInput.value;
+                    const numIterations = parseInt(stepStr, 10);
+
+                    if (!isNaN(numIterations) && numIterations >= 0) {
+                        let safeIterations = numIterations + 1; // n steps means n+1 points
+                        // upper limit to avoid browser freeze
+                        if (safeIterations > 1000) safeIterations = 1000;
+
+                        for (let i = 1; i <= safeIterations; i++) {
+                            const option = document.createElement('option');
+                            option.value = i;
+                            option.textContent = i;
+                            iterationDropdown.appendChild(option);
+                        }
+                        return;
+                    }
+                }
+
+                // Default if no sweep or invalid inputs
+                const option = document.createElement('option');
+                option.text = "1";
+                iterationDropdown.appendChild(option);
+            }
+
+            // Listen to radio changes
+            allRadios.forEach(radio => radio.addEventListener('change', calculateIterations));
+
+            // Listen to range/step input changes
+            const textInputs = document.querySelectorAll('.range-step-row input[type="text"]');
+            textInputs.forEach(input => input.addEventListener('input', calculateIterations));
+
+            calculateIterations();
+        });
+    </script>
+
+    <div id="sweepGraphModal" class="modal-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="window" style="width: 800px; height: 600px; display: flex; flex-direction: column;">
+            <div class="title-bar">
+                <div class="title-bar-text">Sweep Results Graph</div>
+                <div class="title-bar-controls">
+                    <button aria-label="Close"
+                        onclick="document.getElementById('sweepGraphModal').style.display='none'"></button>
+                </div>
+            </div>
+            <div class="window-body" style="flex-grow: 1; padding: 10px; display: flex; flex-direction: column; align-items: stretch;">
+                <div class="sunken-panel"
+                    style="background: white; flex-grow: 1; position: relative; display: flex; flex-direction: column;">
+                    <div style="position: relative; flex-grow: 1; width: 100%; height: 100%; min-height: 0;">
+                        <canvas id="sweepChart" style="display: none; width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div id="graphAxisX"
+                        style="position: absolute; bottom: 10px; left: 10px; right: 10px; height: 1px; background-color: black; display: none;">
+                    </div>
+                    <div id="graphAxisY"
+                        style="position: absolute; bottom: 10px; left: 10px; top: 10px; width: 1px; background-color: black; display: none;">
+                    </div>
+                    <span id="graphPlaceholderText"
+                        style="color: #888; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">[
+                        Graph Area ]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sweepTableModal" class="modal-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="window" style="width: 800px; height: 600px; display: flex; flex-direction: column;">
+            <div class="title-bar">
+                <div class="title-bar-text">Sweep Results Table</div>
+                <div class="title-bar-controls">
+                    <button aria-label="Close"
+                        onclick="document.getElementById('sweepTableModal').style.display='none'"></button>
+                </div>
+            </div>
+            <div class="window-body"
+                style="padding: 10px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; align-items: stretch;">
+                <div class="sunken-panel"
+                    style="background: white; padding: 4px; flex-grow: 1; width: 100%; box-sizing: border-box;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;" id="sweepResultsTable">
+                        <thead>
+                            <tr style="background: #c0c0c0; border-bottom: 1px solid #000;">
+                                <th style="text-align: left; padding: 4px; border: 1px solid #808080;"
+                                    id="tableHeaderSweepParam">Sweep Param</th>
+                                <th style="text-align: right; padding: 4px; border: 1px solid #808080;" id="tableHeaderCol2">Link Margin (dB)
+                                </th>
+                                <th style="text-align: right; padding: 4px; border: 1px solid #808080;" id="tableHeaderCol2Right">Rx Power (dBm)
+                                </th>
+                                <th style="text-align: right; padding: 4px; border: 1px solid #808080;" id="tableHeaderCol5">Link Margin (dB)
+                                </th>
+                                <th style="text-align: right; padding: 4px; border: 1px solid #808080;" id="tableHeaderCol3">Received Power
+                                    (dBm)</th>
+                                <th style="text-align: right; padding: 4px; border: 1px solid #808080;" id="tableHeaderCol4">Path Loss (dB)
+                                </th>
+                                <th style="text-align: center; padding: 4px; border: 1px solid #808080;">Viable?</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sweepTableBody">
+                            <!-- Rows injected by app_v3.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app_v3.js"></script>
+</body>
+
+</html>
