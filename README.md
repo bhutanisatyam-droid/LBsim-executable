@@ -14,6 +14,10 @@ LBsim has been validated against OptiSystem across 100+ randomized LEO-class con
 2. Download `LBsim.exe`.
 3. Double-click to run.
 
+> [!WARNING]  
+> **Windows Defender SmartScreen** may flag the `.exe` when you first run it because it is an unsigned file. This is a known false positive. To bypass it, simply click **"More info"** and then **"Run anyway"**.
+
+
 ### Option 2: Run from Source
 1. Clone the repository:
    ```bash
