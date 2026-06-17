@@ -1,7 +1,5 @@
 # LBsim: Optical Link Budget Estimation Tool
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 LBsim is a deterministic, open-source optical link budget analysis tool for Optical Inter-Satellite Links (OISLs). It provides researchers with a lightweight, Python-based alternative to heavy commercial simulation platforms.
 
 ## Validation
@@ -40,7 +38,3 @@ LBsim has been validated against OptiSystem across 100+ randomized LEO-class con
    ```bash
    python build_exe.py
    ```
-
-## Citation
-If you use LBsim in your research, please cite our paper:
-> *[Citation to be added]*
